@@ -24,19 +24,25 @@ app.post('/api/generate-interview', async (req, res) => {
       model: "gpt-3.5-turbo",
       messages: [
         { role: "system", content: "You are an expert in creating interview questions." },
-        { role: "user", content: `Generate interview questions for a ${jobRole} in the ${industry} industry with ${experienceLevel} experience.` },
+        { role: "user", content: `Generate interview questions and their answers for a ${jobRole} in the ${industry} industry with ${experienceLevel} experience. Format each pair as "Question: [question here] Answer: [answer here]" separated by a newline for each pair.` },
       ],
     });
 
     const generatedText = completion.choices[0].message.content;
 
-    const questionsAndAnswers = generatedText.split('\n').map((qna) => {
-      const parts = qna.split('Answer:');
-      return {
-        question: parts[0]?.trim() || 'No question provided',
-        answer: parts[1]?.trim() || 'No answer provided'
-      };
-    });
+    // Split the generatedText into individual question-answer pairs
+    const questionsAndAnswers = generatedText.split('\n').reduce((acc, line) => {
+      const questionMatch = line.match(/Question:\s*(.*)/);
+      const answerMatch = line.match(/Answer:\s*(.*)/);
+
+      if (questionMatch) {
+        acc.push({ question: questionMatch[1], answer: '' });
+      } else if (answerMatch && acc.length > 0) {
+        acc[acc.length - 1].answer = answerMatch[1];
+      }
+
+      return acc;
+    }, []);
 
     res.json({ questions: questionsAndAnswers });
   } catch (error) {
